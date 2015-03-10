@@ -20,20 +20,20 @@ class CollectionController extends Controller {
 	 */
 	protected $recordControllerClass = 'RecordController';
 
-	static $url_handlers = array(
+	private static $url_handlers = array(
 		'' => 'index',
 		'$Action' => 'handleActionOrID',
 	);
 
-	public static $page_size = 20;
+	private static $page_size = 20;
 
-	static $allowed_actions = array('index','search','add','AddForm','SearchForm','ResultsForm','handleActionOrID');
+	private static $allowed_actions = array('index','search','add','AddForm','SearchForm','ResultsForm','handleActionOrID');
 
 	/**
 	 * @param string $parentController
 	 * @param string $modelClass
 	 */
-	function __construct($parentController = null, $modelClass = null) {
+	public function __construct($parentController = null, $modelClass = null) {
 		if($parentController) $this->parentController = $parentController;
 		if($modelClass) $this->modelClass = $modelClass;
 
@@ -77,7 +77,7 @@ class CollectionController extends Controller {
 	 *
 	 * @return unknown
 	 */
-	function Link() {
+	public function Link($action = null) {
 		if($this->parentController) {
 			return Controller::join_links($this->parentController->Link(), "$this->modelClass");
 		} else {
@@ -92,7 +92,7 @@ class CollectionController extends Controller {
 	 * @param unknown_type $request
 	 * @return unknown
 	 */
-	function handleActionOrID($request) {
+	public function handleActionOrID($request) {
 		if (is_numeric($request->param('Action'))) {
 			return $this->handleID($request);
 		} else {
@@ -107,7 +107,7 @@ class CollectionController extends Controller {
 	 * @param HTTPRequest $request
 	 * @return RecordController
 	 */
-	function handleID($request) {
+	public function handleID($request) {
 		$class = $this->recordControllerClass;
 		return new $class($this, $request);
 	}
@@ -130,18 +130,18 @@ class CollectionController extends Controller {
 	/**
 	 * @param array $searchCriteria
 	 */
-	function Results($searchCriteria = array()) {
+	public function Results($searchCriteria = array()) {
 		$request = ($this->request) ? $this->request : $this->parentController->getRequest();
-		if(!$searchCriteria) $searchCriteria = $request->requestVars();
+		if (!$searchCriteria) $searchCriteria = $request->requestVars();
 
 		$start = ($request->getVar('start')) ? (int)$request->getVar('start') : 0;
 		$limit = $this->stat('page_size');
 
 		$context = singleton($this->modelClass)->getDefaultSearchContext();
-		$query = $context->getQuery($searchCriteria, null, array('start'=>$start,'limit'=>$limit));
-		$records = $context->getResults($searchCriteria, null, array('start'=>$start,'limit'=>$limit));
-		if($records) {
-			$records->setPageLimits($start, $limit, $query->unlimitedRowCount());
+		$query = $context->getQuery($searchCriteria, null, array('start' => $start,'limit' => $limit));
+		$records = $context->getResults($searchCriteria, null, array('start '=> $start,'limit' => $limit));
+		if ($records) {
+			//$records->setPageLimits($start, $limit, $query->unlimitedRowCount());
 		}
 
 		return $records;
@@ -157,7 +157,7 @@ class CollectionController extends Controller {
 		$fields = $context->getSearchFields();
 		$form = new Form($this, "SearchForm",
 			$fields,
-			new FieldSet(
+			new FieldList(
 				new FormAction('search', _t('MemberTableField.SEARCH'))
 			)
 		);
@@ -172,7 +172,7 @@ class CollectionController extends Controller {
 	 *
 	 * @return string
 	 */
-	function search($data, $form, $request) {
+	public function search($data, $form, $request) {
 		return $this->render(array(
 			'Results' => $this->Results($form->getData()),
 			'SearchForm' => $form
@@ -186,7 +186,7 @@ class CollectionController extends Controller {
 	 *
 	 * @return SQLQuery
 	 */
-	function getSearchQuery($searchCriteria) {
+	public function getSearchQuery($searchCriteria) {
 		$context = singleton($this->modelClass)->getDefaultSearchContext();
 		return $context->getQuery($searchCriteria);
 	}
@@ -201,7 +201,7 @@ class CollectionController extends Controller {
 	 * @param unknown_type $request
 	 * @return unknown
 	 */
-	function add($request) {
+	public function add($request) {
 		if(!singleton($this->modelClass)->canCreate(Member::currentUser())) {
 			return $this->httpError(403);
 		}
@@ -232,7 +232,7 @@ class CollectionController extends Controller {
 		return $form;
 	}
 
-	function doAdd($data, $form, $request) {
+	public function doAdd($data, $form, $request) {
 		if(!singleton($this->modelClass)->canCreate(Member::currentUser())) {
 			return $this->httpError(403);
 		}
@@ -244,10 +244,10 @@ class CollectionController extends Controller {
 		$form->saveInto($model);
 		$model->write();
 
-		if($this->canDetailView()) {
-			Director::redirect(Controller::join_links($this->Link(), $model->ID , 'edit'));
+		if ($this->canDetailView()) {
+			$this->redirect(Controller::join_links($this->Link(), $model->ID , 'edit'));
 		} else {
-			Director::redirectBack();
+			$this->redirectBack();
 		}
 
 	}
@@ -283,8 +283,8 @@ class CollectionController extends Controller {
 	}
 
 	public function canCurrentUserCreate() {
-		$p = Director::urlParam('ID');
-		if ($p!='add') {
+		$p = $this->request->param('ID');
+		if ($p != 'add') {
 			return true;
 		}
 	}
@@ -293,7 +293,7 @@ class CollectionController extends Controller {
 	 * If a parentcontroller exists, use its main template,
 	 * and mix in specific collectioncontroller subtemplates.
 	 */
-	function getViewer($action) {
+	public function getViewer($action) {
 		if($this->parentController) {
 			$viewer = $this->parentController->getViewer($action);
 
@@ -316,4 +316,3 @@ class CollectionController extends Controller {
 		}
 	}
 }
-?>

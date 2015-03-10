@@ -5,12 +5,14 @@
  * @author Sam Minnée, SilverStripe Ltd. (<firstname>@silverstripe.com)
  */
 class RecordController extends Controller {
+
 	protected $parentController;
+
 	protected $currentRecord;
 
-	static $allowed_actions = array('edit','view','delete','EditForm','ViewForm','DeleteForm');
+	private static $allowed_actions = array('edit','view','delete','EditForm','ViewForm','DeleteForm');
 
-	function __construct($parentController, $request) {
+	public function __construct($parentController, $request) {
 		$this->parentController = $parentController;
 		$modelName = $parentController->getModelClass();
 
@@ -37,7 +39,7 @@ class RecordController extends Controller {
 		}
 	}
 
-	function __call($funcName, $args) {
+	public function __call($funcName, $args) {
 		if($this->hasMethod($funcName)) {
 			return call_user_func_array(array(&$this, $funcName), $args);
 		} elseif($this->parentController->hasMethod($funcName)) {
@@ -45,7 +47,7 @@ class RecordController extends Controller {
 		}
 	}
 
-	function init() {
+	public function init() {
 		parent::init();
 
 		Requirements::themedCSS('layout');
@@ -57,20 +59,20 @@ class RecordController extends Controller {
 	 * Link fragment - appends the current record ID to the URL.
 	 *
 	 */
-	function Link() {
+	public function Link($action = null) {
 		return Controller::join_links($this->parentController->Link(), "/{$this->currentRecord->ID}");
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	function index($request) {
+	public function index($request) {
 		return $this->view($request);
 	}
 
 	/**
 	 * Edit action - shows a form for editing this record
 	 */
-	function edit($request) {
+	public function edit($request) {
 		if(!$this->currentRecord) {
 			return $this->httpError(404);
 		}
@@ -93,7 +95,7 @@ class RecordController extends Controller {
 
 		$validator = ($this->currentRecord->hasMethod('getValidator')) ? $this->currentRecord->getValidator() : new RequiredFields();
 
-		$actions = new FieldSet(
+		$actions = new FieldList(
 			new FormAction("doEdit", _t('RecordController.SAVE', 'save'))
 		);
 
@@ -104,14 +106,16 @@ class RecordController extends Controller {
 	}
 
 	public function DeleteForm() {
-		if(!$this->currentRecord->canDelete(Member::currentUser())) {
+
+		if (!$this->currentRecord->canDelete(Member::currentUser())) {
 			return false;
 		}
 
-		$form = new Form($this,
+		$form = new Form(
+			$this,
 			"DeleteForm",
-			new FieldSet(),
-			new FieldSet(new FormAction('doDelete', _t('RecordController.DELETE', 'Delete')))
+			new FieldList(),
+			new FieldList(new FormAction('doDelete', _t('RecordController.DELETE', 'Delete')))
 		);
 
 		return $form;
@@ -125,7 +129,7 @@ class RecordController extends Controller {
 	 * @param HTTPRequest $request
 	 * @return mixed
 	 */
-	function doEdit($data, $form, $request) {
+	public function doEdit($data, $form, $request) {
 		if(!$this->currentRecord->canEdit(Member::currentUser())) {
 			return $this->httpError(403);
 		}
@@ -138,7 +142,7 @@ class RecordController extends Controller {
 			'good'
 		);
 
-		Director::redirectBack();
+		$this->redirectBack();
 	}
 
 	/**
@@ -162,16 +166,16 @@ class RecordController extends Controller {
 	/**
 	 * Delete the current record
 	 */
-	function delete() {
+	public function delete() {
 		if(!$this->currentRecord->canDelete(Member::currentUser())) {
 			return $this->httpError(403);
 		}
 
 		$this->currentRecord->delete();
-		$form->sessionMessage(
+		/*$form->sessionMessage(
 			_t('RecordController.DELETESUCCESS','Successfully deleted record'),
 			'good'
-		);
+		);*/
 
 		// Redirect to overview
 		return $this->redirect($this->parentController->Link('index'));
@@ -186,11 +190,13 @@ class RecordController extends Controller {
 	 * @param HTTPRequest $request
 	 * @return mixed
 	 */
-	function view($request) {
-		if(!$this->currentRecord) {
+	public function view($request) {
+
+		if (!$this->currentRecord) {
 			return $this->httpError(404);
 		}
-		if(!$this->currentRecord->canView(Member::currentUser())) {
+
+		if (!$this->currentRecord->canView(Member::currentUser())) {
 			return $this->httpError(403);
 		}
 
@@ -206,9 +212,10 @@ class RecordController extends Controller {
 	 */
 	public function ViewForm() {
 		$fields = $this->currentRecord->getFrontendFields();
-		$form = new Form($this, "EditForm", $fields, new FieldSet());
+		$form = new Form($this, "EditForm", $fields, new FieldList());
 		$form->loadDataFrom($this->currentRecord);
 		$form->makeReadonly();
+
 		return $form;
 	}
 
@@ -237,20 +244,20 @@ class RecordController extends Controller {
 	 * If a parentcontroller exists, use its main template,
 	 * and mix in specific collectioncontroller subtemplates.
 	 */
-	function getViewer($action) {
+	public function getViewer($action) {
 		if($this->parentController) {
 			$viewer = $this->parentController->getViewer($action);
 
 			// generic template with template identifier, e.g. themes/mytheme/templates/Layout/MyModel.ss
 			$layoutGenericTemplate = SSViewer::getTemplateFileByType($this->templateIdentifier(), 'Layout');
-			if($layoutGenericTemplate) $layoutTemplate = $layoutGenericTemplate;
+			if ($layoutGenericTemplate) $layoutTemplate = $layoutGenericTemplate;
 
 			// action-specific template with template identifier, e.g. themes/mytheme/templates/Layout/MyModel_view.ss
 			$layoutActionTemplate = SSViewer::getTemplateFileByType($this->templateIdentifier() . '_' . $action, 'Layout');
-			if($layoutActionTemplate) $layoutTemplate = $layoutActionTemplate;
+			if ($layoutActionTemplate) $layoutTemplate = $layoutActionTemplate;
 
 			// fallback to controller classname, e.g. genericviews/templates/Layout/CollectionController.ss
-			if(!isset($layoutTemplate)) $layoutTemplate = SSViewer::getTemplateFileByType($this->class, 'Layout');
+			if (!isset($layoutTemplate)) $layoutTemplate = SSViewer::getTemplateFileByType($this->class, 'Layout');
 
 			$viewer->setTemplateFile('Layout', $layoutTemplate);
 
@@ -260,4 +267,3 @@ class RecordController extends Controller {
 		}
 	}
 }
-?>
